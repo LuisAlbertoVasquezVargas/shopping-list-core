@@ -9,7 +9,13 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         token = os.environ.get('GH_TOKEN')
         owner = os.environ.get('GH_OWNER')
-        repo_name = "shopping-list-db" 
+        repo_name = os.environ.get('GH_REPO')
+
+        if not all([token, owner, repo_name]):
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(b"Error: Missing environment configuration")
+            return
 
         try:
             g = Github(token)
@@ -23,7 +29,7 @@ class handler(BaseHTTPRequestHandler):
             
             response = {
                 "status": "core_online",
-                "database_connected": repo_name,
+                "database": repo_name,
                 "current_list": data
             }
             self.wfile.write(json.dumps(response).encode())
