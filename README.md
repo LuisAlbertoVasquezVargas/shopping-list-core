@@ -1,62 +1,57 @@
 
-# shopping-list-core
+# Shopping List Core
 
-The serverless backend "engine" for a chat-driven shopping list. This repository contains the Python-based logic that processes user input and manages persistence within the `shopping-list-db` repository.
+The central engine for the AI-Augmented Shopping List. This service acts as the **Persistence Layer**, utilizing a "Git-as-a-DB" pattern to manage shopping data via the GitHub API. Built to be deployed as a Vercel Serverless Function.
 
-## 🏗 Architecture
-This project serves as the **Middleware Layer** in a three-tier modular system:
-1. **`shopping-list-ui`**: (Frontend) Minimalist chat interface.
-2. **`shopping-list-core`**: (This repo) Python Vercel functions for intent parsing and DB communication.
-3. **`shopping-list-db`**: (Database) Private GitHub repository storing JSON data and chat history.
+## 🏗 Repository Structure
 
-## 🛠 Tech Stack
-* **Language:** Python
-* **Deployment:** Vercel (Serverless Functions)
-* **API Wrapper:** [PyGithub](https://github.com/PyGithub/PyGithub)
-* **Data Store:** GitHub REST API (Git-as-a-DB)
+```text
+.
+├── api/
+│   └── chat.py       # Vercel Entry Point (Transport Layer)
+├── core/
+│   └── engine.py     # The Database Engine (Logic Layer)
+├── data/
+│   └── active_list.json # Local schema reference
+├── manage.py         # Project CLI (Development Server)
+└── .env              # Environment Configuration
+```
 
-## 🚀 Setup & Installation
+## 🚀 Getting Started
 
-### Local Development
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/LuisAlbertoVasquezVargas/shopping-list-core.git
-   cd shopping-list-core
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Prerequisites
+* Python 3.10+
+* A GitHub Personal Access Token (PAT) with `repo` scope.
+* A target repository to act as the database.
 
-### Vercel Deployment
-1. Connect this repository to a new project in the **Vercel Dashboard**.
-2. Configure the following **Environment Variables**:
-   * `GH_TOKEN`: Your GitHub Personal Access Token.
-   * `GH_OWNER`: `LuisAlbertoVasquezVargas`
-   * `GH_REPO`: `shopping-list-db`
+### 2. Configuration
+Create a `.env` file in the root:
+```env
+GH_TOKEN=your_github_token
+GH_OWNER=your_github_username
+GH_REPO=shopping-list-db
+```
 
-## 📡 API Endpoints
-
-### `GET /api/chat`
-Checks the connection to the database and returns the current state of the shopping list.
-
-**Success Response:**
-```json
-{
-  "status": "core_online",
-  "database": "shopping-list-db",
-  "current_list": { ... }
-}
+### 3. Running Locally
+The project uses a Django-inspired management script for local development:
+```bash
+python manage.py runserver
 ```
 
 ## 📋 LWC (Last Working Code) Protocol
 
-This project utilizes the **LWC protocol** to provide a clean snapshot of the current functional logic to an LLM. By maintaining the file path as a header in every `.py` file, the entire project state can be exported in a single stream.
+This project follows the **LWC Protocol** to allow seamless context transfer to LLMs. The following command prunes environment noise and streams the core logic:
 
-To export the **Last Working Code**, run:
 ```bash
 find . -path '*/.*' -prune -o -path '*/venv*' -prune -o -name "*.py" -exec cat {} +
 ```
 
-**Note:** This command ensures the LLM receives only logic, ignoring large binary files, virtual environments, and git metadata.
+## 🔌 API Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| **GET** | `/api/chat` | Fetches the current shopping list. |
+| **POST** | `/api/chat` | Adds a new item (`{"item": "name"}`). |
+| **PUT** | `/api/chat` | Updates status (`{"id": 1, "status": "bought"}`). |
+| **DELETE** | `/api/chat` | Removes an item (`{"id": 1}`). |
 
