@@ -19,36 +19,17 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
-    def _get_body(self):
-        length = int(self.headers['Content-Length'])
-        return json.loads(self.rfile.read(length))
-
     def do_GET(self):
         try:
-            self._respond(200, {"status": "core_online", "current_list": self._get_engine().read()})
+            self._respond(200, {"status": "online", "list": self._get_engine().read()})
         except Exception as e:
             self._respond(500, {"error": str(e)})
 
     def do_POST(self):
         try:
-            body = self._get_body()
-            item = self._get_engine().add_item(body.get("item"))
-            self._respond(200, {"success": True, "added": item})
-        except Exception as e:
-            self._respond(500, {"error": str(e)})
-
-    def do_PUT(self):
-        try:
-            body = self._get_body()
-            self._get_engine().update_item(body.get("id"), body.get("status", "bought"))
-            self._respond(200, {"success": True})
-        except Exception as e:
-            self._respond(500, {"error": str(e)})
-
-    def do_DELETE(self):
-        try:
-            body = self._get_body()
-            self._get_engine().delete_item(body.get("id"))
-            self._respond(200, {"success": True})
+            length = int(self.headers['Content-Length'])
+            body = json.loads(self.rfile.read(length))
+            res = self._get_engine().dispatch(body.get("message", ""))
+            self._respond(200, {"success": True, "result": res})
         except Exception as e:
             self._respond(500, {"error": str(e)})

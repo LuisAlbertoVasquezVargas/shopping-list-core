@@ -7,30 +7,16 @@ from api.chat import handler
 
 def run_server():
     load_dotenv()
-    port = 8000
-    server_address = ('localhost', port)
+    server_address = ('localhost', 8000)
     httpd = HTTPServer(server_address, handler)
-    
-    print(f"--- Shopping List Core Management ---")
-    print(f"Local development server active at http://localhost:{port}")
-    print(f"Ready to handle GET, POST, PUT, DELETE...")
-    
+    print("Core Management: Server active at http://localhost:8000")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopping server...")
-
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python manage.py [runserver]")
-        return
-
-    command = sys.argv[1]
-
-    if command == "runserver":
-        run_server()
-    else:
-        print(f"Unknown command: {command}")
+        print("\nShutdown.")
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "runserver":
+        run_server()
+    else:
+        print("Usage: python manage.py runserver")
