@@ -55,7 +55,7 @@ This project utilizes the **LWC protocol** to provide a clean snapshot of the cu
 
 To export the **Last Working Code**, run:
 ```bash
-find . -path './.*' -prune -o -not -path '*__pycache__*' -name "*.py" -exec cat {} +
+find . -path '*/.*' -prune -o -path '*/venv*' -prune -o -name "*.py" -exec cat {} +
 ```
 
 **Note:** This command ensures the LLM receives only logic, ignoring large binary files, virtual environments, and git metadata.
