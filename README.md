@@ -44,8 +44,19 @@ Checks the connection to the database and returns the current state of the shopp
 ```json
 {
   "status": "core_online",
-  "database_connected": "shopping-list-db",
+  "database": "shopping-list-db",
   "current_list": { ... }
 }
 ```
+
+## 📋 LWC (Last Working Code) Protocol
+
+This project utilizes the **LWC protocol** to provide a clean snapshot of the current functional logic to an LLM. By maintaining the file path as a header in every `.py` file, the entire project state can be exported in a single stream.
+
+To export the **Last Working Code**, run:
+```bash
+find . -path './.*' -prune -o -not -path '*__pycache__*' -name "*.py" -exec cat {} +
+```
+
+**Note:** This command ensures the LLM receives only logic, ignoring large binary files, virtual environments, and git metadata.
 
