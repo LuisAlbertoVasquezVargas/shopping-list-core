@@ -25,7 +25,6 @@ class Engine:
         if action == "DELETE": return self.delete_item(val)
         if action == "READ": return self.read()
         if action == "ERROR": return {"error": val}
-        
         return {"status": "confused", "msg": f"No action for: {val}"}
 
     def read(self):
@@ -34,8 +33,14 @@ class Engine:
 
     def add_item(self, name):
         file_ref, data = self._get_file()
-        new_item = {"id": len(data["items"]) + 1, "name": name, "status": "pending"}
+        
+        # ID Patch: Find max ID and add 1
+        existing_ids = [i["id"] for i in data["items"]]
+        next_id = max(existing_ids) + 1 if existing_ids else 1
+        
+        new_item = {"id": next_id, "name": name, "status": "pending"}
         data["items"].append(new_item)
+        
         self.repo.update_file(self.path, f"feat: add {name}", json.dumps(data, indent=2), file_ref.sha)
         return new_item
 
