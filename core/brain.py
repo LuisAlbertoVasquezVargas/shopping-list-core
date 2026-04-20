@@ -21,7 +21,6 @@ class Brain:
 
     def interpret(self, message):
         try:
-            # Force 1.5-flash which has higher availability
             response = self.client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=f"Extract intent JSON (ADD/value, DELETE/value, READ/null) from: {message}",
