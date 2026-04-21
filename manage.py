@@ -5,35 +5,27 @@ import argparse
 from http.server import HTTPServer
 from dotenv import load_dotenv
 from api.chat import handler
-from google import genai
+from core.logger import Logger
 import os
 
-MODEL_MAP = {
-    "small": "gemini-2.0-flash-lite",
-    "medium": "gemini-2.5-flash",
-    "large": "gemini-3-flash-preview",
-    "ultra": "gemini-3.1-pro-preview"
-}
+DEFAULT_MODEL_SIZE = "tiny"
 
-def list_available_models():
-    load_dotenv()
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    print("\n[DISCOVERY] Available models for your key:")
-    try:
-        for model in client.models.list():
-            print(f"  > {model.name}")
-    except Exception as e:
-        print(f"  FAILED to list: {e}")
-    print("")
+# Optimized for 2026 Free Tier: 2.5 Flash-Lite offers the highest RPM (15)
+MODEL_MAP = {
+    "tiny": "gemini-2.5-flash-lite",
+    "mini": "gemini-2.5-flash-lite",
+    "small": "gemini-2.5-flash",
+    "medium": "gemini-3.1-flash-lite",
+    "large": "gemini-3.1-pro-preview"
+}
 
 def run_server(size_key):
     load_dotenv()
-    model_name = MODEL_MAP.get(size_key.lower(), size_key)
+    model_name = MODEL_MAP.get(size_key.lower(), MODEL_MAP[DEFAULT_MODEL_SIZE])
     handler.selected_model = model_name
     server_address = ('', 8000)
     httpd = HTTPServer(server_address, handler)
-    print(f"--- Shopping List Core ---")
-    print(f"Server: http://localhost:8000 | Model: {model_name}")
+    Logger.server(model_name)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
@@ -42,9 +34,7 @@ def run_server(size_key):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["runserver", "list-models"])
-    parser.add_argument("--size", default="small")
+    parser.add_argument("--size", default=DEFAULT_MODEL_SIZE)
     args, _ = parser.parse_known_args()
-    if args.command == "list-models":
-        list_available_models()
-    elif args.command == "runserver":
+    if args.command == "runserver":
         run_server(args.size)

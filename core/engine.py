@@ -3,9 +3,10 @@
 from github import Github
 import json
 from core.brain import Brain
+from core.logger import Logger
 
 class Engine:
-    def __init__(self, token, owner, repo_name, model_name="gemini-2.0-flash"):
+    def __init__(self, token, owner, repo_name, model_name="gemini-2.5-flash-lite"):
         self.g = Github(token)
         self.repo = self.g.get_repo(f"{owner}/{repo_name}")
         self.path = "data/active_list.json"
@@ -20,14 +21,12 @@ class Engine:
         intent = self.brain.interpret(message)
         action = intent.get("action")
         val = intent.get("value")
-
-        print(f"\n[BRAIN LOG] Action: {action} | Value: {val}")
-
-        if action == "ERROR": return {"type": "error", "payload": val}
+        if action == "ERROR":
+            return {"type": "error", "payload": val}
+        if action in ["ADD", "DELETE"] and val is None:
+            return self.read()
         if action == "ADD": return self.add_items(val)
         if action == "DELETE": return self.delete_item(val)
-        if action == "READ": return self.read()
-
         return self.read()
 
     def read(self):
@@ -42,12 +41,30 @@ class Engine:
             ids = [i["id"] for i in data["items"]]
             next_id = max(ids) + 1 if ids else 1
             data["items"].append({"id": next_id, "name": name.strip(), "status": "pending"})
-        self.repo.update_file(self.path, f"feat: add {len(items_to_add)} items", json.dumps(data, indent=2), file_ref.sha)
+        self.repo.update_file(self.path, "feat: update list", json.dumps(data, indent=2), file_ref.sha)
         return data
 
     def delete_item(self, val):
+        if not val: return self.read()
         file_ref, data = self._get_file()
-        targets = [str(v).lower() for v in (val if isinstance(val, list) else [val])]
-        data["items"] = [i for i in data["items"] if str(i["id"]) not in targets and i["name"].lower() not in targets]
-        self.repo.update_file(self.path, f"fix: remove items", json.dumps(data, indent=2), file_ref.sha)
+        targets = val if isinstance(val, list) else [val]
+        processed_targets = []
+        for t in targets:
+            t_str = str(t).strip()
+            if t_str.isdigit():
+                processed_targets.append(int(t_str))
+            else:
+                processed_targets.append(t_str.lower())
+        def should_keep(item):
+            item_id = item.get("id")
+            item_name = str(item.get("name", "")).lower()
+            if item_id in processed_targets: return False
+            if item_name in processed_targets: return False
+            return True
+        original_count = len(data["items"])
+        data["items"] = [i for i in data["items"] if should_keep(i)]
+        if len(data["items"]) < original_count:
+            self.repo.update_file(self.path, "fix: remove items", json.dumps(data, indent=2), file_ref.sha)
+        else:
+            Logger.info("No items matched for deletion.")
         return data
