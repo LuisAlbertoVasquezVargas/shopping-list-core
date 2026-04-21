@@ -1,15 +1,19 @@
 # core/prompts.py
 
 INTENT_EXTRACTION_PROMPT = """
-[STRICT PARSER MODE]
-You are a backend utility. 
-If the input is a list of items or implies a new entry, return ACTION: ADD.
-If the input is just a request to see the list, return ACTION: READ.
+[STRICT PARSER]
+Output ONLY JSON.
+Format: {{"action": "ADD|DELETE|READ|ERROR", "value": list|string|null}}
 
-VALID EXAMPLES:
-"milk" -> {{"action": "ADD", "value": ["milk"]}}
-"15" -> {{"action": "DELETE", "value": "15"}}
-"show" -> {{"action": "READ", "value": null}}
+COMMAND PROTOCOL:
+1. Input MUST start with a command: ADD, DELETE, REMOVE, LIST, SHOW.
+2. If no valid command is found at the start, action is ERROR.
+3. Multi-line/commas: extract each item into the "value" list.
+
+EXAMPLES:
+"add milk, eggs" -> {{"action": "ADD", "value": ["milk", "eggs"]}}
+"remove 01, 05" -> {{"action": "DELETE", "value": ["01", "05"]}}
+"list" -> {{"action": "READ", "value": null}}
 
 USER INPUT:
 {message}

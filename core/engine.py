@@ -17,26 +17,17 @@ class Engine:
         return file_ref, data
 
     def dispatch(self, message):
-        msg_clean = message.lower().strip()
-        
-        if msg_clean in ["show", "list", "read"]:
-            return self.read()
-
-        if msg_clean.startswith("add "):
-            return self.add_items(message[4:].strip())
-
-        if msg_clean.startswith("del ") or msg_clean.startswith("delete "):
-            target = msg_clean.replace("delete", "").replace("del", "").strip()
-            return self.delete_item(target)
-
         intent = self.brain.interpret(message)
         action = intent.get("action")
         val = intent.get("value")
 
+        print(f"\n[BRAIN LOG] Action: {action} | Value: {val}")
+
         if action == "ERROR": return {"type": "error", "payload": val}
         if action == "ADD": return self.add_items(val)
         if action == "DELETE": return self.delete_item(val)
-        
+        if action == "READ": return self.read()
+
         return self.read()
 
     def read(self):
@@ -46,23 +37,17 @@ class Engine:
     def add_items(self, val):
         if not val: return self.read()
         file_ref, data = self._get_file()
-        
-        raw_items = val.split('\n') if isinstance(val, str) else val
-        items_to_add = [i.strip() for i in raw_items if i and i.strip()]
-
-        if not items_to_add: return data
-
+        items_to_add = val if isinstance(val, list) else [val]
         for name in items_to_add:
             ids = [i["id"] for i in data["items"]]
             next_id = max(ids) + 1 if ids else 1
-            data["items"].append({"id": next_id, "name": name, "status": "pending"})
-
-        commit_msg = f"feat: add {', '.join(items_to_add[:3])}"
-        self.repo.update_file(self.path, commit_msg, json.dumps(data, indent=2), file_ref.sha)
+            data["items"].append({"id": next_id, "name": name.strip(), "status": "pending"})
+        self.repo.update_file(self.path, f"feat: add {len(items_to_add)} items", json.dumps(data, indent=2), file_ref.sha)
         return data
 
-    def delete_item(self, target):
+    def delete_item(self, val):
         file_ref, data = self._get_file()
-        data["items"] = [i for i in data["items"] if str(i["id"]) != str(target) and i["name"].lower() != str(target).lower()]
-        self.repo.update_file(self.path, f"fix: remove {target}", json.dumps(data, indent=2), file_ref.sha)
+        targets = [str(v).lower() for v in (val if isinstance(val, list) else [val])]
+        data["items"] = [i for i in data["items"] if str(i["id"]) not in targets and i["name"].lower() not in targets]
+        self.repo.update_file(self.path, f"fix: remove items", json.dumps(data, indent=2), file_ref.sha)
         return data

@@ -6,7 +6,7 @@ import json
 from core.engine import Engine
 
 class handler(BaseHTTPRequestHandler):
-    selected_model = "gemini-2.0-flash"
+    selected_model = "gemini-2.0-flash-lite"
 
     def _get_engine(self):
         return Engine(
