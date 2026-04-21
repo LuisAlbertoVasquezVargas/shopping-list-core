@@ -10,43 +10,34 @@ class Brain:
 
     def _mock_interpret(self, message):
         msg = message.lower().strip()
-        parts = msg.split()
+        lines = [l.strip() for l in msg.split('\n') if l.strip()]
         
         if msg == "help":
             return {"action": "HELP", "value": None}
             
-        if any(w in msg for w in ["add", "buy", "get", "need"]):
-            item = " ".join(parts[1:]) if len(parts) > 1 else "Unknown"
-            return {"action": "ADD", "value": item}
-            
-        if any(w in msg for w in ["remove", "delete", "discard"]):
-            # Mock remains rigid, but LLM will be smarter
-            try: 
-                return {"action": "DELETE", "value": int(parts[-1])}
-            except: 
-                return {"action": "DELETE", "value": parts[-1]} # Pass the string if ID fails
+        if lines[0].startswith("add"):
+            # Simple mock: if first line is 'add', take subsequent lines as items
+            items = lines[1:] if len(lines) > 1 else [lines[0].replace("add", "").strip()]
+            return {"action": "ADD", "value": [i for i in items if i]}
                 
         return {"action": "READ", "value": None}
 
     def interpret(self, message):
         prompt = f"""
-        Extract the user's intent into a JSON object.
+        Extract user intent into JSON. 
         
-        Valid Actions:
-        - ADD: User wants to put something on the list.
-        - DELETE: User wants to remove something (by ID or by name).
-        - READ: User wants to see the list.
-        - HELP: User explicitly asked for help or commands.
+        Actions: ADD, DELETE, READ, HELP.
+        
+        For ADD:
+        If the message contains multiple lines of items, return 'value' as a list of strings.
+        Example: 
+        "add
+        milk
+        eggs" -> {{"action": "ADD", "value": ["milk", "eggs"]}}
 
-        Instructions:
-        1. If DELETE is used with a name (e.g., "pollito"), set value to that name.
-        2. If DELETE is used with an ID, set value to the integer ID.
-        3. For HELP, set value to null.
-        4. Include an "explanation" field if you are correcting a typo or mapping a nickname (e.g., "Interpreted 'pollito' as 'pollo'").
-
-        Message: {message}
+        Message:
+        {message}
         """
-        
         try:
             response = self.client.models.generate_content(
                 model="gemini-2.0-flash",
@@ -54,5 +45,5 @@ class Brain:
                 config={"response_mime_type": "application/json"}
             )
             return json.loads(response.text)
-        except Exception as e:
+        except:
             return self._mock_interpret(message)
