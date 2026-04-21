@@ -2,7 +2,7 @@
 
 from github import Github
 import json
-import re
+import traceback
 from core.brain import Brain
 from core.logger import Logger
 
@@ -19,85 +19,89 @@ class Engine:
         return file_ref, data
 
     def dispatch(self, message):
-        intent = self.brain.interpret(message)
-        action = intent.get("action")
-        val = intent.get("value")
+        try:
+            _, current_data = self._get_file()
+            intent = self.brain.interpret(message, context=current_data)
+            
+            action = intent.get("action", "ERROR")
+            val = intent.get("value")
+            conf = intent.get("confirmation", "Processed.")
 
-        if action == "ERROR":
-            return {"type": "error", "payload": val or "Unknown parsing error."}
-        
-        if action == "HELP":
-            return {
-                "type": "help", 
-                "payload": "Commands: ADD [items], REMOVE [id/name], LIST, HELP. (Supported: EN, ES, PT)"
-            }
+            if action == "READ":
+                return self._format_response(current_data, conf, "READ")
 
-        if action in ["ADD", "DELETE"] and val is None:
-            return self.read()
+            if action == "DELETE":
+                targets = []
+                if isinstance(val, list):
+                    for t in val:
+                        if isinstance(t, dict):
+                            targets.append(t.get("name") or t.get("id"))
+                        else:
+                            targets.append(t)
+                else:
+                    targets = [val]
+                
+                data = self.delete_item(targets)
+                return self._format_response(data, conf, "DELETE")
 
-        if action == "ADD": 
-            res = self.add_items(val)
-            return {"type": "table", "payload": res["items"]}
+            if action == "ADD": 
+                data = self.add_items(val)
+                return self._format_response(data, conf, "ADD")
 
-        if action == "DELETE": 
-            res = self.delete_item(val)
-            return {"type": "table", "payload": res["items"]}
-        
-        return {"type": "table", "payload": self.read()["items"]}
+            if action == "CLEAR":
+                data = self.clear_list()
+                return self._format_response(data, conf, "CLEAR")
+
+            return {"type": "error", "payload": f"Unhandled action: {action}"}
+
+        except Exception as e:
+            Logger.info(f"[Engine] Crash: {str(e)}")
+            return {"type": "error", "payload": f"Internal Error: {str(e)}"}
+
+    def _format_response(self, data, message, action):
+        return {
+            "type": "table", 
+            "payload": data.get("items", []), 
+            "meta": {"action": action, "message": message}
+        }
 
     def read(self):
         _, data = self._get_file()
         return data
 
-    def add_items(self, val):
-        if not val: return self.read()
+    def clear_list(self):
         file_ref, data = self._get_file()
-        items_to_process = val if isinstance(val, list) else [val]
-        
-        for raw_entry in items_to_process:
-            match = re.search(r'\((.*?)\)', raw_entry)
-            note = match.group(1) if match else ""
-            name = re.sub(r'\(.*?\)', '', raw_entry).strip()
-            
+        data["items"] = []
+        self.repo.update_file(self.path, "feat: clear list", json.dumps(data, indent=2), file_ref.sha)
+        return data
+
+    def add_items(self, items_list):
+        if not items_list: return self.read()
+        file_ref, data = self._get_file()
+        for item in items_list:
             ids = [i["id"] for i in data["items"]]
             next_id = max(ids) + 1 if ids else 1
-            
             data["items"].append({
                 "id": next_id, 
-                "name": name, 
-                "metadata": note,
+                "name": item.get("name", "Unknown"), 
+                "metadata": item.get("notes", ""),
+                "category": item.get("category", "General"),
                 "status": "pending"
             })
-        
-        self.repo.update_file(self.path, "feat: update list items", json.dumps(data, indent=2), file_ref.sha)
+        self.repo.update_file(self.path, "feat: add items", json.dumps(data, indent=2), file_ref.sha)
         return data
 
     def delete_item(self, val):
-        if not val: return self.read()
         file_ref, data = self._get_file()
+        targets = [str(t).lower() for t in val if t is not None]
         
-        targets = val if isinstance(val, list) else [val]
-        processed_targets = []
-        for t in targets:
-            t_str = str(t).strip()
-            if t_str.isdigit():
-                processed_targets.append(int(t_str))
-            else:
-                processed_targets.append(t_str.lower())
-        
-        def should_keep(item):
-            item_id = item.get("id")
-            item_name = str(item.get("name", "")).lower()
-            if item_id in processed_targets: return False
-            if item_name in processed_targets: return False
-            return True
-
         original_count = len(data["items"])
-        data["items"] = [i for i in data["items"] if should_keep(i)]
+        data["items"] = [
+            i for i in data["items"] 
+            if str(i["id"]) not in targets and str(i["name"]).lower() not in targets
+        ]
         
         if len(data["items"]) < original_count:
             self.repo.update_file(self.path, "fix: remove items", json.dumps(data, indent=2), file_ref.sha)
-        else:
-            Logger.info("No items matched for deletion.")
             
         return data

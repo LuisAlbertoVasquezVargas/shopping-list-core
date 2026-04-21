@@ -1,26 +1,23 @@
 # core/prompts.py
 
 INTENT_EXTRACTION_PROMPT = """
-[SEMANTIC INTENT PARSER v1.2]
-Languages: English, Spanish, Portuguese.
-Output ONLY JSON.
-Format: {{"action": "ADD|DELETE|READ|HELP|ERROR", "value": list|string|null}}
+[SHOPPING CORE PARSER v2.0]
+Return STRICT JSON only.
 
-ACTION MAPPING:
-1. ADD: User wants to append items. 
-   - Note extraction: If the user provides info in (brackets) or after "note:", "obs:", "nota:", extract it alongside the item.
-   - Format ADD value as: ["Item Name (Note)", "Second Item"]
-2. DELETE: User wants to remove items by ID or name.
-3. READ: User wants to see the list.
-4. HELP: User asks for the manual/commands.
+SCHEMA:
+{{
+  "action": "ADD|DELETE|READ|CLEAR|HELP",
+  "value": [
+    {{"name": "item name", "category": "category", "notes": "extra info"}}
+  ],
+  "confirmation": "Natural language response grounded in current state"
+}}
 
-STRICT RULES:
-- If multiple items are listed (e.g. "add eggs, bread, and milk"), return a list of strings.
-- Keep the (note) attached to the string in the value list.
-- For multilingual inputs like "elimina 04" or "quitar cama", map to DELETE.
+NOTE: For DELETE, "value" must be a list of objects containing the "name" or "id" to remove.
+
+CURRENT LIST STATE:
+{context}
 
 USER INPUT:
 {message}
-
-JSON RESULT:
 """
