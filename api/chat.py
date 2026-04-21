@@ -6,11 +6,14 @@ import json
 from core.engine import Engine
 
 class handler(BaseHTTPRequestHandler):
+    selected_model = "gemini-2.0-flash"
+
     def _get_engine(self):
         return Engine(
             os.environ.get('GH_TOKEN'),
             os.environ.get('GH_OWNER'),
-            os.environ.get('GH_REPO')
+            os.environ.get('GH_REPO'),
+            model_name=self.selected_model
         )
 
     def _respond(self, code, data):
@@ -32,4 +35,5 @@ class handler(BaseHTTPRequestHandler):
             res = self._get_engine().dispatch(body.get("message", ""))
             self._respond(200, {"success": True, "result": res})
         except Exception as e:
+            print(f"CRITICAL: Handler Error: {str(e)}")
             self._respond(500, {"error": str(e)})

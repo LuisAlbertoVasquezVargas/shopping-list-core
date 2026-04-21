@@ -5,11 +5,11 @@ import json
 from core.brain import Brain
 
 class Engine:
-    def __init__(self, token, owner, repo_name):
+    def __init__(self, token, owner, repo_name, model_name="gemini-2.0-flash"):
         self.g = Github(token)
         self.repo = self.g.get_repo(f"{owner}/{repo_name}")
         self.path = "data/active_list.json"
-        self.brain = Brain()
+        self.brain = Brain(model_name=model_name)
 
     def _get_file(self):
         file_ref = self.repo.get_contents(self.path)
@@ -17,44 +17,52 @@ class Engine:
         return file_ref, data
 
     def dispatch(self, message):
+        msg_clean = message.lower().strip()
+        
+        if msg_clean in ["show", "list", "read"]:
+            return self.read()
+
+        if msg_clean.startswith("add "):
+            return self.add_items(message[4:].strip())
+
+        if msg_clean.startswith("del ") or msg_clean.startswith("delete "):
+            target = msg_clean.replace("delete", "").replace("del", "").strip()
+            return self.delete_item(target)
+
         intent = self.brain.interpret(message)
         action = intent.get("action")
         val = intent.get("value")
 
-        if action == "HELP": return {"type": "help"}
-        if action == "READ": return self.read()
+        if action == "ERROR": return {"type": "error", "payload": val}
         if action == "ADD": return self.add_items(val)
         if action == "DELETE": return self.delete_item(val)
         
-        return {"error": "Unknown intent"}
+        return self.read()
 
     def read(self):
         _, data = self._get_file()
         return data
 
     def add_items(self, val):
-        """Handles both a single string or a list of strings"""
+        if not val: return self.read()
         file_ref, data = self._get_file()
-        items_to_add = [val] if isinstance(val, str) else val
         
-        new_entries = []
-        for name in items_to_add:
-            existing_ids = [i["id"] for i in data["items"]]
-            next_id = max(existing_ids) + 1 if existing_ids else 1
-            item = {"id": next_id, "name": name, "status": "pending"}
-            data["items"].append(item)
-            new_entries.append(name)
+        raw_items = val.split('\n') if isinstance(val, str) else val
+        items_to_add = [i.strip() for i in raw_items if i and i.strip()]
 
-        # Batch Update
-        commit_msg = f"feat: batch add {', '.join(new_entries[:3])}"
+        if not items_to_add: return data
+
+        for name in items_to_add:
+            ids = [i["id"] for i in data["items"]]
+            next_id = max(ids) + 1 if ids else 1
+            data["items"].append({"id": next_id, "name": name, "status": "pending"})
+
+        commit_msg = f"feat: add {', '.join(items_to_add[:3])}"
         self.repo.update_file(self.path, commit_msg, json.dumps(data, indent=2), file_ref.sha)
-        
-        # Return the updated list so the UI refreshes the table
         return data
 
-    def delete_item(self, item_id):
+    def delete_item(self, target):
         file_ref, data = self._get_file()
-        # Handle case where ID is passed as string or int
-        data["items"] = [i for i in data["items"] if str(i["id"]) != str(item_id)]
-        self.repo.update_file(self.path, f"fix: remove item {item_id}", json.dumps(data, indent=2), file_ref.sha)
+        data["items"] = [i for i in data["items"] if str(i["id"]) != str(target) and i["name"].lower() != str(target).lower()]
+        self.repo.update_file(self.path, f"fix: remove {target}", json.dumps(data, indent=2), file_ref.sha)
         return data
