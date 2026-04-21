@@ -2,6 +2,7 @@
 
 from github import Github
 import json
+import re
 from core.brain import Brain
 from core.logger import Logger
 
@@ -21,13 +22,28 @@ class Engine:
         intent = self.brain.interpret(message)
         action = intent.get("action")
         val = intent.get("value")
+
         if action == "ERROR":
-            return {"type": "error", "payload": val}
+            return {"type": "error", "payload": val or "Unknown parsing error."}
+        
+        if action == "HELP":
+            return {
+                "type": "help", 
+                "payload": "Commands: ADD [items], REMOVE [id/name], LIST, HELP. (Supported: EN, ES, PT)"
+            }
+
         if action in ["ADD", "DELETE"] and val is None:
             return self.read()
-        if action == "ADD": return self.add_items(val)
-        if action == "DELETE": return self.delete_item(val)
-        return self.read()
+
+        if action == "ADD": 
+            res = self.add_items(val)
+            return {"type": "table", "payload": res["items"]}
+
+        if action == "DELETE": 
+            res = self.delete_item(val)
+            return {"type": "table", "payload": res["items"]}
+        
+        return {"type": "table", "payload": self.read()["items"]}
 
     def read(self):
         _, data = self._get_file()
@@ -36,17 +52,30 @@ class Engine:
     def add_items(self, val):
         if not val: return self.read()
         file_ref, data = self._get_file()
-        items_to_add = val if isinstance(val, list) else [val]
-        for name in items_to_add:
+        items_to_process = val if isinstance(val, list) else [val]
+        
+        for raw_entry in items_to_process:
+            match = re.search(r'\((.*?)\)', raw_entry)
+            note = match.group(1) if match else ""
+            name = re.sub(r'\(.*?\)', '', raw_entry).strip()
+            
             ids = [i["id"] for i in data["items"]]
             next_id = max(ids) + 1 if ids else 1
-            data["items"].append({"id": next_id, "name": name.strip(), "status": "pending"})
-        self.repo.update_file(self.path, "feat: update list", json.dumps(data, indent=2), file_ref.sha)
+            
+            data["items"].append({
+                "id": next_id, 
+                "name": name, 
+                "metadata": note,
+                "status": "pending"
+            })
+        
+        self.repo.update_file(self.path, "feat: update list items", json.dumps(data, indent=2), file_ref.sha)
         return data
 
     def delete_item(self, val):
         if not val: return self.read()
         file_ref, data = self._get_file()
+        
         targets = val if isinstance(val, list) else [val]
         processed_targets = []
         for t in targets:
@@ -55,16 +84,20 @@ class Engine:
                 processed_targets.append(int(t_str))
             else:
                 processed_targets.append(t_str.lower())
+        
         def should_keep(item):
             item_id = item.get("id")
             item_name = str(item.get("name", "")).lower()
             if item_id in processed_targets: return False
             if item_name in processed_targets: return False
             return True
+
         original_count = len(data["items"])
         data["items"] = [i for i in data["items"] if should_keep(i)]
+        
         if len(data["items"]) < original_count:
             self.repo.update_file(self.path, "fix: remove items", json.dumps(data, indent=2), file_ref.sha)
         else:
             Logger.info("No items matched for deletion.")
+            
         return data

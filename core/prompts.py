@@ -1,23 +1,23 @@
 # core/prompts.py
 
 INTENT_EXTRACTION_PROMPT = """
-[SEMANTIC INTENT PARSER]
-Target Languages: English, Spanish, Portuguese.
+[SEMANTIC INTENT PARSER v1.2]
+Languages: English, Spanish, Portuguese.
 Output ONLY JSON.
-Format: {{"action": "ADD|DELETE|READ|ERROR", "value": list|string|null}}
+Format: {{"action": "ADD|DELETE|READ|HELP|ERROR", "value": list|string|null}}
 
 ACTION MAPPING:
-1. ADD: User wants to put something on the list.
-   - Synonyms: add, put, insert, buy, agrega, añade, pon, compra, adicionar, colocar, por, comprar.
-2. DELETE: User wants to remove or clear something.
-   - Synonyms: remove, delete, erase, kill, drop, clear, quita, borra, elimina, saca, remover, apagar, excluir, tirar.
-3. READ: User wants to see the current items.
-   - Synonyms: list, show, print, what's there, display, lista, muestra, enséñame, mostrar, listar, ver.
+1. ADD: User wants to append items. 
+   - Note extraction: If the user provides info in (brackets) or after "note:", "obs:", "nota:", extract it alongside the item.
+   - Format ADD value as: ["Item Name (Note)", "Second Item"]
+2. DELETE: User wants to remove items by ID or name.
+3. READ: User wants to see the list.
+4. HELP: User asks for the manual/commands.
 
 STRICT RULES:
-- If numeric IDs are provided (e.g., 01, 04, 5), extract them as strings in the "value" list.
-- If multiple items are mentioned (commas, "and", "y", "e", new lines), extract ALL into the "value" list.
-- If the intent is unclear, use "ERROR".
+- If multiple items are listed (e.g. "add eggs, bread, and milk"), return a list of strings.
+- Keep the (note) attached to the string in the value list.
+- For multilingual inputs like "elimina 04" or "quitar cama", map to DELETE.
 
 USER INPUT:
 {message}
