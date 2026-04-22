@@ -17,47 +17,41 @@ class Engine:
         data = json.loads(file_ref.decoded_content.decode())
         return file_ref, data
 
+    def read(self):
+        _, data = self._get_file()
+        return data
+
     def dispatch(self, message):
         try:
             _, current_data = self._get_file()
             intent = self.brain.interpret(message, context=current_data)
-            
             action = intent.get("action", "ERROR")
             val = intent.get("value")
             conf = intent.get("confirmation", "Processed.")
 
             if action == "READ":
                 return self._format_response(current_data, conf, "READ")
-
             if action == "DELETE":
                 targets = [t.get("name") or t.get("id") if isinstance(t, dict) else t for t in (val if isinstance(val, list) else [val])]
                 data = self.delete_item(targets)
                 return self._format_response(data, conf, "DELETE")
-
-            if action == "ADD": 
+            if action == "ADD":
                 data = self.add_items(val)
                 return self._format_response(data, conf, "ADD")
-
             if action == "CLEAR":
                 data = self.clear_list()
                 return self._format_response(data, conf, "CLEAR")
-            
             if action == "HELP":
-                return {
-                    "type": "help",
-                    "payload": [],
-                    "meta": {"action": "HELP", "message": conf}
-                }
+                return {"type": "help", "payload": [], "meta": {"action": "HELP", "message": conf}}
             return {"type": "error", "payload": f"Unhandled action: {action}"}
-
         except Exception as e:
             Logger.info(f"[Engine] Crash: {str(e)}")
             return {"type": "error", "payload": f"Internal Error: {str(e)}"}
 
     def _format_response(self, data, message, action):
         return {
-            "type": "table", 
-            "payload": data.get("items", []), 
+            "type": "table",
+            "payload": data.get("items", []),
             "meta": {"action": action, "message": message}
         }
 
@@ -75,8 +69,8 @@ class Engine:
             ids = [i["id"] for i in data["items"]]
             next_id = max(ids) + 1 if ids else 1
             data["items"].append({
-                "id": next_id, 
-                "name": item.get("name", "Unknown"), 
+                "id": next_id,
+                "name": item.get("name", "Unknown"),
                 "metadata": item.get("notes", ""),
                 "category": item.get("category", "Other"),
                 "status": "pending"

@@ -7,14 +7,13 @@ from core.engine import Engine
 from core.logger import Logger
 
 class handler(BaseHTTPRequestHandler):
-    selected_model = None 
-
     def _get_engine(self):
+        model = os.environ.get('SELECTED_MODEL', 'gemini-2.5-flash-lite')
         return Engine(
             os.environ.get('GH_TOKEN'),
             os.environ.get('GH_OWNER'),
             os.environ.get('GH_REPO'),
-            model_name=self.selected_model
+            model_name=model
         )
 
     def _respond(self, code, data):
@@ -25,7 +24,7 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            length = int(self.headers['Content-Length'])
+            length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
             res = self._get_engine().dispatch(body.get("message", ""))
             self._respond(200, {"success": True, "result": res})

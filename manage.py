@@ -18,7 +18,7 @@ MODEL_MAP = {
 def run_server(size_key):
     load_dotenv()
     model_name = MODEL_MAP.get(size_key.lower(), MODEL_MAP["tiny"])
-    handler.selected_model = model_name
+    os.environ['SELECTED_MODEL'] = model_name
     httpd = HTTPServer(('', 8000), handler)
     Logger.info(f"[System] Starting Core | Model: {model_name}")
     try:
@@ -36,3 +36,4 @@ if __name__ == "__main__":
     elif args.command == "list-models":
         for key, model in MODEL_MAP.items():
             Logger.info(f"[Config] {key}: {model}")
+
