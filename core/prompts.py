@@ -1,19 +1,23 @@
 # core/prompts.py
 
+CATEGORIES = ["Grocery", "Electronics", "Household", "Personal Care", "Other"]
+
 INTENT_EXTRACTION_PROMPT = """
-[SHOPPING CORE PARSER v2.0]
-Return STRICT JSON only.
+[SHOPPING CORE v2.1]
+Return STRICT JSON. 
+
+CATEGORIES: {categories}
 
 SCHEMA:
 {{
   "action": "ADD|DELETE|READ|CLEAR|HELP",
   "value": [
-    {{"name": "item name", "category": "category", "notes": "extra info"}}
+    {{"name": "item", "category": "one from CATEGORIES list", "notes": "info"}}
   ],
-  "confirmation": "Natural language response grounded in current state"
+  "confirmation": "A single-sentence, professional acknowledgement."
 }}
 
-NOTE: For DELETE, "value" must be a list of objects containing the "name" or "id" to remove.
+NOTE: For DELETE, "value" must be a list of objects with "name" or "id".
 
 CURRENT LIST STATE:
 {context}

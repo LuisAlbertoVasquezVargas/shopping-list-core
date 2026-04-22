@@ -2,7 +2,6 @@
 
 from github import Github
 import json
-import traceback
 from core.brain import Brain
 from core.logger import Logger
 
@@ -31,16 +30,7 @@ class Engine:
                 return self._format_response(current_data, conf, "READ")
 
             if action == "DELETE":
-                targets = []
-                if isinstance(val, list):
-                    for t in val:
-                        if isinstance(t, dict):
-                            targets.append(t.get("name") or t.get("id"))
-                        else:
-                            targets.append(t)
-                else:
-                    targets = [val]
-                
+                targets = [t.get("name") or t.get("id") if isinstance(t, dict) else t for t in (val if isinstance(val, list) else [val])]
                 data = self.delete_item(targets)
                 return self._format_response(data, conf, "DELETE")
 
@@ -51,7 +41,13 @@ class Engine:
             if action == "CLEAR":
                 data = self.clear_list()
                 return self._format_response(data, conf, "CLEAR")
-
+            
+            if action == "HELP":
+                return {
+                    "type": "help",
+                    "payload": [],
+                    "meta": {"action": "HELP", "message": conf}
+                }
             return {"type": "error", "payload": f"Unhandled action: {action}"}
 
         except Exception as e:
@@ -65,14 +61,11 @@ class Engine:
             "meta": {"action": action, "message": message}
         }
 
-    def read(self):
-        _, data = self._get_file()
-        return data
-
-    def clear_list(self):
+    def delete_item(self, val):
         file_ref, data = self._get_file()
-        data["items"] = []
-        self.repo.update_file(self.path, "feat: clear list", json.dumps(data, indent=2), file_ref.sha)
+        targets = [str(t).lower() for t in val if t is not None]
+        data["items"] = [i for i in data["items"] if str(i["id"]) not in targets and str(i["name"]).lower() not in targets]
+        self.repo.update_file(self.path, "fix: remove items", json.dumps(data, indent=2), file_ref.sha)
         return data
 
     def add_items(self, items_list):
@@ -85,23 +78,14 @@ class Engine:
                 "id": next_id, 
                 "name": item.get("name", "Unknown"), 
                 "metadata": item.get("notes", ""),
-                "category": item.get("category", "General"),
+                "category": item.get("category", "Other"),
                 "status": "pending"
             })
         self.repo.update_file(self.path, "feat: add items", json.dumps(data, indent=2), file_ref.sha)
         return data
 
-    def delete_item(self, val):
+    def clear_list(self):
         file_ref, data = self._get_file()
-        targets = [str(t).lower() for t in val if t is not None]
-        
-        original_count = len(data["items"])
-        data["items"] = [
-            i for i in data["items"] 
-            if str(i["id"]) not in targets and str(i["name"]).lower() not in targets
-        ]
-        
-        if len(data["items"]) < original_count:
-            self.repo.update_file(self.path, "fix: remove items", json.dumps(data, indent=2), file_ref.sha)
-            
+        data["items"] = []
+        self.repo.update_file(self.path, "feat: clear list", json.dumps(data, indent=2), file_ref.sha)
         return data
