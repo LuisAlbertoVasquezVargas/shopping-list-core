@@ -1,4 +1,4 @@
-# api/chat.py
+# api/index.py
 
 from http.server import BaseHTTPRequestHandler
 import os
