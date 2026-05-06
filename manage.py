@@ -5,7 +5,7 @@ import argparse
 import os
 from http.server import HTTPServer
 from dotenv import load_dotenv
-from api.chat import handler
+from api.index import handler
 from core.logger import Logger
 
 MODEL_MAP = {

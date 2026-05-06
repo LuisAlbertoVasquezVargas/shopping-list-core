@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/chat.py"
+      "source": "/api/chat",
+      "destination": "/api/index.py"
     }
   ]
 }
