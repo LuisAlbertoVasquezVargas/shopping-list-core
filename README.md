@@ -1,7 +1,18 @@
+<!-- README.md -->
 
 # Shopping List Core
 
 The central engine for the AI-Augmented Shopping List. This service acts as the **Persistence Layer**, utilizing a "Git-as-a-DB" pattern to manage shopping data via the GitHub API. Built to be deployed as a Vercel Serverless Function.
+
+
+## 📥 Cloning the Repository
+
+To begin working with the source code, clone the repository to your local machine:
+
+```bash
+git clone https://github.com/LuisAlbertoVasquezVargas/shopping-list-core.git
+cd shopping-list-core
+```
 
 ## 🏗 Repository Structure
 
