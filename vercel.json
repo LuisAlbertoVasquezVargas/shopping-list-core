@@ -3,6 +3,14 @@
     {
       "source": "/api/chat",
       "destination": "/api/index.py"
+    },
+    {
+      "source": "/api/lists",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/api/lists/:id",
+      "destination": "/api/index.py"
     }
   ]
 }

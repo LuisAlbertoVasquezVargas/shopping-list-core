@@ -57,12 +57,22 @@ This project follows the **LWC Protocol** to allow seamless context transfer to 
 find . -path '*/.*' -prune -o -path '*/venv*' -prune -o -name "*.py" -exec cat {} +
 ```
 
+## List Types
+
+Lists use a required `type` discriminator:
+
+- `shopping`: products with quantity, unit, category, and notes.
+- `todo`: tasks with priority, due date, completion status, and notes.
+
+The active list type selects a dedicated AI prompt and validation path.
+
 ## 🔌 API Endpoints
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| **GET** | `/api/chat` | Fetches the current shopping list. |
-| **POST** | `/api/chat` | Adds a new item (`{"item": "name"}`). |
-| **PUT** | `/api/chat` | Updates status (`{"id": 1, "status": "bought"}`). |
-| **DELETE** | `/api/chat` | Removes an item (`{"id": 1}`). |
-
+| **GET** | `/api/lists` | Lists every available list. |
+| **POST** | `/api/lists` | Creates a list with `{name, type}`. |
+| **GET** | `/api/lists/:id` | Fetches one list and its items. |
+| **PATCH** | `/api/lists/:id` | Renames a list. |
+| **DELETE** | `/api/lists/:id` | Deletes a list and its items. |
+| **POST** | `/api/chat` | Interprets a message for the supplied `list_id`. |
